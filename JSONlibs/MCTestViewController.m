@@ -169,7 +169,7 @@
 {
     switch (section) {
         case 0:
-            return [NSString stringWithFormat:@"Average (%i) repeats", self.repeats];
+            return [NSString stringWithFormat:@"Average (%i repeats)", self.repeats];
             break;
         case 1:
             return @"Min";
