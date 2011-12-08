@@ -16,6 +16,7 @@
 @property (strong, nonatomic) MBProgressHUD *hud;
 @property (strong, nonatomic) NSMutableDictionary *results;
 @property (assign, nonatomic) NSInteger repeats;
+@property (assign, nonatomic) BOOL completed;
 
 @property (strong, nonatomic) UIWebView *graphView;
 

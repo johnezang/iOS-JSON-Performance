@@ -20,6 +20,7 @@
 @synthesize results = _results;
 @synthesize repeats;
 @synthesize graphView = _graphView;
+@synthesize completed;
 
 - (id)initWithStyle:(UITableViewStyle)style
 {
@@ -59,6 +60,7 @@
     // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
     // self.navigationItem.rightBarButtonItem = self.editButtonItem;
     self.title = self.selectedFile;
+    self.completed = NO;
     
     _results = [[NSMutableDictionary alloc] initWithCapacity:[_selectedLibraries count]];
     
@@ -104,6 +106,8 @@
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
+    if (!self.completed) return NO;
+    
     // Return YES for supported orientations
     if (!(interfaceOrientation == UIInterfaceOrientationPortrait)) {
         [[UIApplication sharedApplication] setStatusBarHidden:YES withAnimation:UIStatusBarAnimationSlide];
@@ -359,6 +363,7 @@
     [_hud hide:YES];
     [self.tableView reloadData];    
     [self buildChart];
+    [self setCompleted:YES];
 }
 
 - (NSNumber *)parseWithJSONKit:(NSString *)content
