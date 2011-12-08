@@ -15,12 +15,21 @@
 @property (strong, nonatomic) NSString *selectedFile;
 @property (strong, nonatomic) MBProgressHUD *hud;
 @property (strong, nonatomic) NSMutableDictionary *results;
+@property (assign, nonatomic) NSInteger repeats;
+
+@property (strong, nonatomic) UIWebView *graphView;
+
+- (float)average:(NSArray *)items;
+- (float)max:(NSArray *)items;
+- (float)min:(NSArray *)items;
+
+- (void)buildChart;
 
 - (void)parse;
-- (float)parseWithJSONKit:(NSString *)content;
-- (float)parseWithSBJSON:(NSString *)content;
-- (float)parseWithTouchJSON:(NSString *)content;
-- (float)parseWithNXJSON:(NSString *)content;
-- (float)parseWithNSJSONSerialization:(NSString *)content;
+- (NSNumber *)parseWithJSONKit:(NSString *)content;
+- (NSNumber *)parseWithSBJSON:(NSString *)content;
+- (NSNumber *)parseWithTouchJSON:(NSString *)content;
+- (NSNumber *)parseWithNextiveJson:(NSString *)content;
+- (NSNumber *)parseWithNSJSONSerialization:(NSString *)content;
 
 @end

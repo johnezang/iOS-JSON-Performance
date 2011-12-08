@@ -15,5 +15,6 @@
 @property (strong, nonatomic) NSArray *files;
 @property (strong, nonatomic) NSMutableArray *selectedLibraries;
 @property (strong, nonatomic) NSString *selectedFile;
+@property (assign, nonatomic) NSInteger repeats;
 
 @end

@@ -14,6 +14,7 @@
 @synthesize files = _files;
 @synthesize selectedLibraries = _selectedLibraries;
 @synthesize selectedFile;
+@synthesize repeats;
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
@@ -50,6 +51,8 @@
     
     _files = [[NSArray alloc] initWithObjects:@"random.json", @"twitter_timeline.json", @"repeat.json", nil];
     _selectedLibraries = [[NSMutableArray alloc] init];
+    
+    self.repeats = 1;
 }
 
 - (void)viewDidUnload
@@ -92,7 +95,7 @@
 // Customize the number of sections in the table view.
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-    return 3;
+    return 4;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
@@ -101,6 +104,8 @@
         return [_libraries count];
     } else if (section == 1) {
         return [_files count];
+    }  else if (section == 2) {
+        return 5;
     }
     return 1;
 }
@@ -132,6 +137,35 @@
             cell.accessoryType = UITableViewCellAccessoryCheckmark;
         else
             cell.accessoryType = UITableViewCellAccessoryNone;
+    } else if (indexPath.section == 2) {
+        NSInteger number = 0;
+        switch (indexPath.row) {
+            case 0:
+                number = 1;
+                break;
+            case 1:
+                number = 5;
+                break;
+            case 2:
+                number = 25;
+                break;
+            case 3:
+                number = 50;
+                break;
+            case 4:
+                number = 100;
+                break;
+            default:
+                break;
+        }
+        
+        cell.textLabel.text = [NSString stringWithFormat:@"%i times", number];
+        
+        if (self.repeats == number)
+            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+        else
+            cell.accessoryType = UITableViewCellAccessoryNone;
+        
     } else {
         cell.textLabel.text = @"RUN!";
         cell.textLabel.textAlignment = UITextAlignmentCenter;
@@ -149,6 +183,9 @@
             break;
         case 1:
             return @"Select File";
+            break;
+        case 2:
+            return @"Parse the file...";
             break;
         default:
             break;
@@ -226,12 +263,80 @@
                                  withRowAnimation:UITableViewRowAnimationAutomatic];
         }        
         return;
+    } else if (indexPath.section == 2) {
+        UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+        
+        NSInteger number = 0;
+        switch (indexPath.row) {
+            case 0:
+                number = 1;
+                break;
+            case 1:
+                number = 5;
+                break;
+            case 2:
+                number = 25;
+                break;
+            case 3:
+                number = 50;
+                break;
+            case 4:
+                number = 100;
+                break;
+            default:
+                break;
+        }
+
+        if (self.repeats == number) return;
+        
+        NSInteger prevSelection = 0;
+        switch (self.repeats) {
+            case 1:
+                prevSelection = 0;
+                break;
+            case 5:
+                prevSelection = 1;
+                break;
+            case 25:
+                prevSelection = 2;
+                break;
+            case 50:
+                prevSelection = 3;
+                break;
+            case 100:
+                prevSelection = 4;
+                break;
+            default:
+                break;
+        }
+        
+
+        NSIndexPath *selection = [NSIndexPath indexPathForRow:prevSelection 
+                                                    inSection:2];
+
+        self.repeats = number;
+        cell.accessoryType = UITableViewCellAccessoryCheckmark;
+        [tableView reloadRowsAtIndexPaths:[NSArray arrayWithObjects:selection, nil] 
+                         withRowAnimation:UITableViewRowAnimationAutomatic];
+        return;
+    }
+    
+    if (self.selectedFile == nil || [self.selectedLibraries count] == 0) {
+        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Hmmm..." 
+                                                            message:@"Please select at least one library and one file to parse." 
+                                                           delegate:nil 
+                                                  cancelButtonTitle:@"Ok..." 
+                                                  otherButtonTitles:nil];
+        [alertView show];
+        [alertView release];
+        return;
     }
     
     MCTestViewController *detailViewController = [[MCTestViewController alloc] initWithNibName:@"MCTestViewController" 
                                                                                         bundle:nil];
     detailViewController.selectedFile = self.selectedFile;
     detailViewController.selectedLibraries = self.selectedLibraries;
+    detailViewController.repeats = self.repeats;
     [self.navigationController pushViewController:detailViewController animated:YES];
     [detailViewController release];
 }

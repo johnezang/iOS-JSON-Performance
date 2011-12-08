@@ -18,6 +18,8 @@
 @synthesize selectedFile;
 @synthesize hud = _hud;
 @synthesize results = _results;
+@synthesize repeats;
+@synthesize graphView = _graphView;
 
 - (id)initWithStyle:(UITableViewStyle)style
 {
@@ -39,6 +41,7 @@
 - (void)dealloc {
     self.hud = nil;
     self.selectedFile = nil;
+    [_graphView release];
     [_results release];
     [_selectedLibraries release];
     [super dealloc];
@@ -58,6 +61,11 @@
     self.title = self.selectedFile;
     
     _results = [[NSMutableDictionary alloc] initWithCapacity:[_selectedLibraries count]];
+    
+    _graphView = [[UIWebView alloc] initWithFrame:self.navigationController.view.bounds];
+    [_graphView setHidden:YES];
+    _graphView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.navigationController.view addSubview:_graphView];
 }
 
 - (void)viewDidUnload
@@ -77,7 +85,7 @@
     [super viewDidAppear:animated];
     
     _hud = [[MBProgressHUD alloc] initWithView:self.view];
-    [_hud setLabelText:@"Loading file..."];
+    [_hud setLabelText:@"Parsing..."];
     [_hud show:YES];
     [self.view addSubview:_hud];
     
@@ -97,7 +105,21 @@
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
     // Return YES for supported orientations
+    if (!(interfaceOrientation == UIInterfaceOrientationPortrait)) {
+        [[UIApplication sharedApplication] setStatusBarHidden:YES withAnimation:UIStatusBarAnimationSlide];
+    } else {
+        [[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationSlide];
+    }
     return !(interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown);
+}
+
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
+{
+    if (fromInterfaceOrientation == UIInterfaceOrientationPortrait) {
+        [_graphView setHidden:NO];
+    } else {
+        [_graphView setHidden:YES];
+    }
 }
 
 #pragma mark - Table view data source
@@ -105,7 +127,7 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
     // Return the number of sections.
-    return 1;
+    return 3;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
@@ -125,8 +147,36 @@
     
     // Configure the cell...
     cell.textLabel.text = [_selectedLibraries objectAtIndex:indexPath.row];
-    cell.detailTextLabel.text = [NSString stringWithFormat:@"%.2f ms", [[_results objectForKey:[_selectedLibraries objectAtIndex:indexPath.row]] floatValue]];
+    
+    NSMutableArray *results = [_results objectForKey:[_selectedLibraries objectAtIndex:indexPath.row]];
+    
+    if (indexPath.section == 0) {
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.2f ms", [self average:results]];
+    } else if (indexPath.section == 1) {
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.2f ms", [self min:results]];
+    } else if (indexPath.section == 2) {
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.2f ms", [self max:results]];
+    }
+    
     return cell;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
+{
+    switch (section) {
+        case 0:
+            return [NSString stringWithFormat:@"Average (%i) repeats", self.repeats];
+            break;
+        case 1:
+            return @"Min";
+            break;
+        case 2:
+            return @"Max";
+            break;
+        default:
+            break;
+    }
+    return nil;
 }
 
 /*
@@ -189,10 +239,101 @@
     [hud release];
 }
 
+#pragma mark - Calculation
+
+- (float)average:(NSArray *)items
+{
+    if ([items count] == 0) return 0;
+    float total = 0.0;
+    for (NSNumber *n in items) {
+        total+= [n floatValue];
+    }
+    return total / [items count];
+}
+
+- (float)min:(NSArray *)items
+{
+    if ([items count] == 0) return 0;
+    float min = MAXFLOAT;
+    for (NSNumber *n in items) {
+        if ([n floatValue] < min)
+            min = [n floatValue];
+    }
+    return min;
+}
+
+- (float)max:(NSArray *)items
+{
+    if ([items count] == 0) return 0;
+    float max = 0.0;
+    for (NSNumber *n in items) {
+        if ([n floatValue] > max)
+            max = [n floatValue];
+    }
+    return max;
+}
+
+#pragma merk - Build Chard
+
+- (void)buildChart
+{
+    NSString *pathToTemplate = [[NSBundle mainBundle] pathForResource:@"graph" 
+                                                               ofType:@"html" 
+                                                          inDirectory:@"/htdocs" ];
+    NSString *template = [NSString stringWithContentsOfFile:pathToTemplate 
+                                                   encoding:NSUTF8StringEncoding 
+                                                      error:nil];
+    
+    //categories: ['Africa', 'America', 'Asia', 'Europe', 'Oceania']
+    NSMutableString *categories = [NSMutableString stringWithString:@"["];
+    for (NSString *libname in self.selectedLibraries) {
+        [categories appendFormat:@"'%@'", ([libname isEqualToString:@"NSJSONSerialization"]?@"Apple JSON":libname)];
+        if (libname != [self.selectedLibraries lastObject])
+            [categories appendString:@", "];
+    }
+    [categories appendString:@"]"];
+    
+    NSMutableString *series = [NSMutableString stringWithString:@"[{\n name: 'Average', \ndata: ["];
+    for (NSString *libname in self.selectedLibraries) {        
+        NSMutableArray *results = [_results objectForKey:libname];
+        [series appendFormat:@"%.2f", [self average:results]];
+        
+        if (libname != [self.selectedLibraries lastObject])
+            [series appendString:@", "];
+    }
+    [series appendString:@"]}, \n{name: 'Min', \ndata: ["];
+    
+    for (NSString *libname in self.selectedLibraries) {        
+        NSMutableArray *results = [_results objectForKey:libname];
+        [series appendFormat:@"%.2f", [self min:results]];
+        
+        if (libname != [self.selectedLibraries lastObject])
+            [series appendString:@", "];
+    }
+    [series appendString:@"]}, \n{name: 'Max', \ndata: ["];
+    
+    for (NSString *libname in self.selectedLibraries) {        
+        NSMutableArray *results = [_results objectForKey:libname];
+        [series appendFormat:@"%.2f", [self max:results]];
+        
+        if (libname != [self.selectedLibraries lastObject])
+            [series appendString:@", "];
+    }
+    [series appendString:@"]}\n]"];
+    
+    NSString *html = [NSString stringWithFormat:template, self.selectedFile, self.repeats, categories, series];
+    
+    [self.graphView loadHTMLString:html baseURL:[NSURL fileURLWithPath:
+                                                 [NSString stringWithFormat:@"%@/htdocs/graph.html", 
+                                                  [[NSBundle mainBundle] bundlePath]]]];    
+}
+
 #pragma mark - Parser
 
 - (void)parse
 {    
+    [_hud setLabelText:@"Parsing..."];
+    
     NSError *error = nil;
     NSString *pathToFile = [[NSBundle mainBundle] pathForResource:selectedFile ofType:@""];
     NSString *contentFile = [NSString stringWithContentsOfFile:pathToFile encoding:NSUTF8StringEncoding error:&error];
@@ -205,39 +346,32 @@
     
     for (NSString *libName in _selectedLibraries) 
     {
-        [_hud setLabelText:[NSString stringWithFormat:@"Parsing with %@...", libName]];
-        float timeElapsed;
+        NSMutableArray *results = [[[NSMutableArray alloc] initWithCapacity:self.repeats] autorelease];
+        SEL method = NSSelectorFromString([NSString stringWithFormat:@"parseWith%@:",libName]);
         
-        if ([libName isEqualToString:@"JSONKit"]) {
-            timeElapsed = [self parseWithJSONKit:contentFile];
-        } else if ([libName isEqualToString:@"SBJSON"]) {
-            timeElapsed = [self parseWithSBJSON:contentFile];
-        } else if ([libName isEqualToString:@"TouchJSON"]) {
-            timeElapsed = [self parseWithTouchJSON:contentFile];
-        } else if ([libName isEqualToString:@"NextiveJson"]) {
-            timeElapsed = [self parseWithTouchJSON:contentFile];
-        } else if ([libName isEqualToString:@"NSJSONSerialization"]) {
-            timeElapsed = [self parseWithNSJSONSerialization:contentFile];
+        for (int i = 0; i < self.repeats; i++) {
+            [results addObject:[self performSelector:method withObject:contentFile]];
         }
-        NSLog(@"%@ time elapsed -> %f", libName, timeElapsed);
-        [_results setValue:[NSNumber numberWithFloat:timeElapsed] forKey:libName];
+       
+        [_results setObject:results forKey:libName];
     }
     
     [_hud hide:YES];
     [self.tableView reloadData];    
+    [self buildChart];
 }
 
-- (float)parseWithJSONKit:(NSString *)content
+- (NSNumber *)parseWithJSONKit:(NSString *)content
 {
     NSDate *startTime = [NSDate date];
     id result = [content objectFromJSONString];  
     float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
     if (result == nil)
-        return -1.0;
-    return elapsedTime;
+        elapsedTime = -1.0;
+    return [NSNumber numberWithFloat:elapsedTime];
 }
 
-- (float)parseWithSBJSON:(NSString *)content
+- (NSNumber *)parseWithSBJSON:(NSString *)content
 {
     NSDate *startTime = [NSDate date];
     // Create SBJSON object to parse JSON
@@ -245,11 +379,11 @@
     id result = [parser objectWithString:content error:nil];
     float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
     if (result == nil)
-        return -1.0;
-    return elapsedTime;
+        elapsedTime = -1.0;;
+     return [NSNumber numberWithFloat:elapsedTime];;
 }
 
-- (float)parseWithTouchJSON:(NSString *)content
+- (NSNumber *)parseWithTouchJSON:(NSString *)content
 {
     NSData *jsonData = [content dataUsingEncoding:NSUTF8StringEncoding];
     NSError *error = nil;
@@ -257,22 +391,22 @@
     [[CJSONDeserializer deserializer] deserialize:jsonData error:&error];
     float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
     if (error)
-        return -1.0;
-    return elapsedTime;
+        elapsedTime = -1.0;;
+     return [NSNumber numberWithFloat:elapsedTime];;
 }
 
-- (float)parseWithNXJSON:(NSString *)content
+- (NSNumber *)parseWithNextiveJson:(NSString *)content
 {
     NSError *error = nil;
 	NSDate *startTime = [NSDate date];
 	[NXJsonParser parseString:content error:&error ignoreNulls:NO];
     float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
     if (error)
-        return -1.0;
-    return elapsedTime;
+        elapsedTime = -1.0;;
+     return [NSNumber numberWithFloat:elapsedTime];;
 }
 
-- (float)parseWithNSJSONSerialization:(NSString *)content
+- (NSNumber *)parseWithNSJSONSerialization:(NSString *)content
 {
     NSError *error = nil;
     NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding];
@@ -280,8 +414,8 @@
 	id result = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&error];
     float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
     if (result == nil)
-        return -1.0;
-    return elapsedTime;
+        elapsedTime = -1.0;;
+     return [NSNumber numberWithFloat:elapsedTime];;
 }
 
 
