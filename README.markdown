@@ -13,7 +13,16 @@ I used the following libraries:
 * [NSJSONSerialization](http://developer.apple.com/library/ios/#documentation/Foundation/Reference/NSJSONSerialization_Class/Reference/Reference.html) - *Public API since iOS5*
 
 
-I also created a [post in my blog about it](http://bonto.ch/blog/2011/12/06/json-libraries-for-ios-comparison/). Please feel free to add comments, suggestion and criticism to help me improving this basic project.
+I also created a [post in my blog about it](http://www.bonto.ch/blog/2011/12/08/json-libraries-for-ios-comparison-updated/). Please feel free to add comments, suggestion and criticism to help me improving this basic project.
+
+Latest Results
+====================
+
+![Twitter Timeline](http://bonto.ch/images/content/twitter_timeline_2_chart.png)
+
+![100 Records with a Repeated Structure](http://bonto.ch/images/content/repeat_2_chart.png)
+
+![1000 Records with Random Structure](http://bonto.ch/images/content/random_2_chart.png)
 
 License
 ====================
