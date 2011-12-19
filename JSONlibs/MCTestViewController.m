@@ -345,6 +345,7 @@
         NSLog(@"Error: %@", [error description]);
         return;
     }
+    NSData *contentData = [contentFile dataUsingEncoding:NSUTF8StringEncoding];
     
     //Libs JSONKit, TouchJSON, NextiveJson, SBJSON, NSJSONSerialization
     
@@ -354,7 +355,7 @@
         SEL method = NSSelectorFromString([NSString stringWithFormat:@"parseWith%@:",libName]);
         
         for (int i = 0; i < self.repeats; i++) {
-            [results addObject:[self performSelector:method withObject:contentFile]];
+            [results addObject:[self performSelector:method withObject:([libName hasPrefix:@"JSONKitData"] ? contentData : contentFile)]];
         }
        
         [_results setObject:results forKey:libName];
@@ -370,6 +371,47 @@
 {
     NSDate *startTime = [NSDate date];
     id result = [content objectFromJSONString];  
+    float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
+    if (result == nil)
+        elapsedTime = -1.0;
+    return [NSNumber numberWithFloat:elapsedTime];
+}
+
+- (NSNumber *)parseWithJSONKitData:(NSData *)content
+{
+    NSDate *startTime = [NSDate date];
+    id result = [content objectFromJSONData];  
+    float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
+    if (result == nil)
+        elapsedTime = -1.0;
+    return [NSNumber numberWithFloat:elapsedTime];
+}
+
+- (NSNumber *)parseWithJSONKitThread:(NSString *)content
+{
+    JSONDecoder *decoder = [[[NSThread currentThread] threadDictionary] objectForKey:@"JSONKit Thread Local Decoder"];
+    if(decoder == NULL) {
+        decoder = [JSONDecoder decoder];
+        [[[NSThread currentThread] threadDictionary] setObject:decoder forKey:@"JSONKit Thread Local Decoder"];
+    }
+    NSDate *startTime = [NSDate date];
+    NSData *utf8Data = [content dataUsingEncoding:NSUTF8StringEncoding];
+    id result = [decoder objectWithUTF8String:[utf8Data bytes] length:[utf8Data length]];
+    float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
+    if (result == nil)
+        elapsedTime = -1.0;
+    return [NSNumber numberWithFloat:elapsedTime];
+}
+
+- (NSNumber *)parseWithJSONKitDataThread:(NSData *)content
+{
+    JSONDecoder *decoder = [[[NSThread currentThread] threadDictionary] objectForKey:@"JSONKit Thread Local Decoder"];
+    if(decoder == NULL) {
+        decoder = [JSONDecoder decoder];
+        [[[NSThread currentThread] threadDictionary] setObject:decoder forKey:@"JSONKit Thread Local Decoder"];
+    }
+    NSDate *startTime = [NSDate date];
+    id result = [decoder objectWithData:content];
     float elapsedTime = [startTime timeIntervalSinceNow] * -1000;
     if (result == nil)
         elapsedTime = -1.0;

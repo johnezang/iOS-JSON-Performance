@@ -47,7 +47,7 @@
 {
     [super viewDidLoad];
 	// Do any additional setup after loading the view, typically from a nib.    
-    _libraries = [[NSArray alloc] initWithObjects:@"JSONKit", @"TouchJSON", @"NextiveJson", @"SBJSON", @"NSJSONSerialization", nil];
+    _libraries = [[NSArray alloc] initWithObjects:@"JSONKit", @"JSONKitData", @"JSONKitThread", @"JSONKitDataThread", @"TouchJSON", @"NextiveJson", @"SBJSON", @"NSJSONSerialization", nil];
     
     _files = [[NSArray alloc] initWithObjects:@"random.json", @"twitter_timeline.json", @"repeat.json", nil];
     _selectedLibraries = [[NSMutableArray alloc] init];
